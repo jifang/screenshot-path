@@ -57,4 +57,35 @@ guard fd >= 0 else { log("cannot open \(shotDir) for watching"); exit(1) }
 let src = DispatchSource.makeFileSystemObjectSource(fileDescriptor: fd, eventMask: .write, queue: .main)
 src.setEventHandler { scan() }
 src.resume()
+
+// 首次运行时询问一次是否关闭截图缩略图（缩略图存在时，系统约 5 秒后才把文件写入磁盘）
+func askAboutThumbnailOnce() {
+    let own = UserDefaults(suiteName: "com.jifang.screenshot-path")!
+    let key = "askedAboutThumbnail"
+    if own.bool(forKey: key) { return }
+    // 已经关闭了缩略图，无需再问
+    if let on = CFPreferencesCopyAppValue("show-thumbnail" as CFString, "com.apple.screencapture" as CFString) as? Bool, on == false {
+        return
+    }
+    own.set(true, forKey: key)  // 无论选择什么，都只问这一次
+
+    NSApplication.shared.setActivationPolicy(.accessory)
+    NSApp.activate(ignoringOtherApps: true)
+    let alert = NSAlert()
+    alert.messageText = "Disable the screenshot thumbnail?"
+    alert.informativeText = "macOS only saves a screenshot to disk after its floating thumbnail disappears (about 5 seconds), so the path can't be copied until then. Turning the thumbnail off makes screenshots save instantly.\n\nYou can undo this in Cmd+Shift+5 → Options → Show Floating Thumbnail."
+    alert.addButton(withTitle: "Disable Thumbnail")
+    alert.addButton(withTitle: "Keep It")
+    guard alert.runModal() == .alertFirstButtonReturn else { log("thumbnail: user kept it"); return }
+
+    CFPreferencesSetAppValue("show-thumbnail" as CFString, kCFBooleanFalse, "com.apple.screencapture" as CFString)
+    CFPreferencesAppSynchronize("com.apple.screencapture" as CFString)
+    let p = Process()
+    p.executableURL = URL(fileURLWithPath: "/usr/bin/killall")
+    p.arguments = ["SystemUIServer"]
+    try? p.run()
+    log("thumbnail: disabled")
+}
+DispatchQueue.main.async { askAboutThumbnailOnce() }
+
 RunLoop.main.run()

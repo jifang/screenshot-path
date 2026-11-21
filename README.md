@@ -33,7 +33,7 @@ On first start macOS asks whether `screenshot-path` may access your Desktop (or 
 
 ## Tips
 
-- macOS only writes the screenshot file after the floating thumbnail disappears (about 5 s). To save instantly:
+- macOS only writes the screenshot file after the floating thumbnail disappears (about 5 s). On first launch the app asks once whether to turn the thumbnail off. To do it manually:
   `defaults write com.apple.screencapture show-thumbnail -bool false && killall SystemUIServer`
 - Custom screenshot folder (`defaults write com.apple.screencapture location ...`) is honored.
 - Files are recognised by name (`Screenshot*`, `Screen Shot*`, `屏幕截图*`, `截屏*`).
